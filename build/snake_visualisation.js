@@ -13,6 +13,7 @@ $(document).ready(function(){
     	x: 0,
     	y: 0
     };
+    var food_shape = [{x:4, y:0}, {x:3, y:0}, {x:3, y:1}, {x:2, y:1}, {x:2, y:2}, {x:1, y:2}, {x:1, y:3}, {x:0, y:3}, {x:0, y:4}, {x:4, y:4}];
 	var N = 5;
 	var num_agents = 260;
 
@@ -86,9 +87,9 @@ $(document).ready(function(){
 
 		// load pre-trained network from JSON and turn off learning
 		// we're trying out this method but we might try out a switch statement later
-		if (Math.random > 0.5)
+		if (Math.random() > 0.5)
 		{
-			var j = JSON.parse(diagonalTopLeftToBottomRightJSON);
+			var j = JSON.parse(initialJSON);
 		} else {
 			var j = JSON.parse(diagonalBottomLeftToTopRightJSON);
 		}
@@ -165,6 +166,10 @@ $(document).ready(function(){
 			// we put down food first so that it will be overwritten if
 			// the head is on top of it
 			// test_array[food.x, food.y] = 1;
+	        for(var i = 0; i < food_shape.length; i++)
+	        {
+	            test_array[food_shape[i].x][food_shape[i].y] = 1;
+	        }
 
 			// we only give the network the head of the snake
 			var head = this.agent_array[0];
