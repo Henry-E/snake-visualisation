@@ -165,6 +165,11 @@ $(document).ready(function(){
 
             // check them
             isCollision = check_food_snake_collision(x_food, y_food, snake_array);
+
+            if(x_food == food.x || y_food == food.y)
+            {
+                isCollision = true;
+            }
             // console.log(x_food, y_food, snake_array);
             // if(isCollision) console.log("food generated on top of snake by accident");
         }
