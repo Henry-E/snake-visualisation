@@ -9,10 +9,7 @@ $(document).ready(function(){
     //Lets save the cell width in a variable for easy control
     var cw = 10;
     var d;
-    var food = {
-            x: -1, 
-            y: -1, 
-        };
+    var food;
     var score;
     var test_array;
 
@@ -66,32 +63,27 @@ $(document).ready(function(){
         // console.log(actionix, action);
         // this.actionix = actionix; //back this up
       },
-   backward: function() {
-      var reward = 0.0;
+       backward: function() {
+          var reward = 0.0;
 
-        var nx = snake_array[0].x;
-        var ny = snake_array[0].y;
-
-        if(d == "right") nx = (nx + 1 == w/cw ? 0: nx + 1);
-        else if(d == "left") nx = (nx - 1 == -1 ? w/cw-1: nx - 1);
-        else if(d == "up") ny = (ny - 1 == -1 ? h/cw-1: ny - 1);
-        else if(d == "down") ny = (ny + 1 == h/cw ? 0: ny + 1);
-        
-
-    if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || check_snake_snake_collision(nx, ny, snake_array))
-    {
-      //This will tell if the snake hits the wall
-      //or if the head of the snake bumps into its body
-      reward = -1;
-    } else if(nx == food.x && ny == food.y) { 
-      //If the new head position matches with that of the food,
-      reward = 1;
-    }
-        
-        // console.log(reward);
-        // pass to brain for learning
-        this.brain.backward(reward);
-      }
+          var snake_head = snake_array[0]
+          
+          // unmaking the original mistake
+          // If the head is at the location of the food
+          // give a reward
+          // for some reason beforehand, I was giving
+          // the reward if the snake was moving onto the head
+          // which lead to it learning patterns where it looked
+          // like it was almost avoiding eating the food
+          for(var i = 0; i < food.length; i++)
+          {
+            if(snake_head.x == food[i].x && snake_head.y == food[i].y)
+              reward = 1;
+          }            
+            // console.log(reward);
+            // pass to brain for learning
+            this.brain.backward(reward);
+          }
      }
 
      // creating a start function that only gets called once so that the interval doesn't keep getting
@@ -119,7 +111,6 @@ $(document).ready(function(){
         d = "right"; //default direction
         create_snake();
         food = []
-        food.push({x:-1, y:-1});
         // Have to initialise food for the first time we use the collision function
         create_food(); //Now we can see the food particle
         //finally lets display the score
@@ -165,15 +156,20 @@ $(document).ready(function(){
 
             // check them
             isCollision = check_food_snake_collision(x_food, y_food, snake_array);
+
+            // if(x_food == food.x || y_food == food.y)
+            // {
+            //     isCollision = true;
+            // }
             // console.log(x_food, y_food, snake_array);
             // if(isCollision) console.log("food generated on top of snake by accident");
         }
         // assign food to the new location
 
-        food = {
+        food = [{
             x: x_food, 
             y: y_food, 
-        };
+        }];
 
         // console.log(food['y']);
         // test_array[food['x'], food['y']] = 1;
@@ -200,18 +196,30 @@ $(document).ready(function(){
         ctx.strokeStyle = "black";
         ctx.strokeRect(0, 0, w, h);
 
+        //Lets paint the food
+        for(var i = 0; i < food.length; i++)
+        {
+            paint_cell(food[i].x, food[i].y, "red");
+        }
+
+
+        for(var i = 0; i < snake_array.length; i++)
+        {
+            var c = snake_array[i];
+            //Lets paint 10px wide cells
+            cell_colour = 'rgb(' + ((i / (snake_array.length - 1)) * 200) + ',' + ((i / (snake_array.length - 1)) * 200) + ', 255)';
+            paint_cell(c.x, c.y, cell_colour);
+            // test_array[c.y][c.x] = 2;
+        }
+        
+
+
         // Calculate all the stuff need for the forward pass 
-        var isSnake = true;
-        current_step_array_snake = get_input_array(isSnake);
-        isSnake = false;
-        current_step_array_food = get_input_array(isSnake);
-
         var input_array = [];
-
-        // for(var i = 0; i < last_step_array.length; i++)
-        // {
-        //     input_array = input_array.concat(last_step_array[i]);
-        // }
+        // just the tip
+        var snake_head = [snake_array[0]];
+        var current_step_array_snake = get_input_array(snake_head);
+        var current_step_array_food = get_input_array(food);
 
         // We're only inputing the current time step
         for(var i = 0; i < current_step_array_snake.length; i++)
@@ -227,6 +235,9 @@ $(document).ready(function(){
         // This call the function that sets an update for d
         snake_agent.forward(input_array);// ***********************************
 
+        // Run the backward pass 
+        snake_agent.backward();
+
         // d = snake_agent.forward();
 
         // console.log(input_array);
@@ -241,6 +252,16 @@ $(document).ready(function(){
         //Pop out the tail cell and place it infront of the head cell
         var nx = snake_array[0].x;
         var ny = snake_array[0].y;
+
+
+        // snake eats food, create new food
+        // but only if there's a single food, rather than a shape
+        if(food.length == 1 && nx == food[0].x && ny == food[0].y)
+        {
+            create_food();
+        }
+
+
         //These were the position of the head cell.
         //We will increment it to get the new head position
         //Lets add proper direction based movement now
@@ -253,97 +274,16 @@ $(document).ready(function(){
         else if(d == "up") ny = (ny - 1 == -1 ? h/cw-1: ny - 1);
         else if(d == "down") ny = (ny + 1 == h/cw ? 0: ny + 1);
         
-        // // Run the backward pass 
-        // snake_agent.backward();
 
-
-        //Lets add the game over clauses now
-        //This will restart the game if the snake hits the wall
-        //Lets add the code for body collision
-        //Now if the head of the snake bumps into its body, the game will restart
-        if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || check_snake_snake_collision(nx, ny, snake_array))
-        {
-            // If there's a collision we're going to try running the forward pass again
-            // just in case it was a random move that caused the collision
-            // cause if the infinite snake code works it really should never go outside the boundary
-
-            // This call the function that sets an update for d
-            snake_agent.forward(input_array);// ***********************************
-
-            var nx = snake_array[0].x;
-            var ny = snake_array[0].y;
-
-            if(d == "right") nx = (nx + 1 == w/cw ? 0: nx + 1);
-            else if(d == "left") nx = (nx - 1 == -1 ? w/cw-1: nx - 1);
-            else if(d == "up") ny = (ny - 1 == -1 ? h/cw-1: ny - 1);
-            else if(d == "down") ny = (ny + 1 == h/cw ? 0: ny + 1);
-
-            // We wait until the second attempt at a move before running the backpass to avoid confusion
-            snake_agent.backward();
-
-            // If there's still another collision then fuck it, end the game
-            if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || check_snake_snake_collision(nx, ny, snake_array))
-            {
-                //restart game
-                init();
-                //Lets organize the code a bit now.
-                return;
-            }
-
-        } else {
-            // If there's no collision run the backward pass, we need this otherwise it wouldn't get called
-            snake_agent.backward();
-        }
         
-        // ****** We're going to comment out the code that adds extra length to
-        // the snake if it goes over
 
-        //Lets write the code to make the snake eat the food
-        //The logic is simple
-        //If the new head position matches with that of the food,
-        //Create a new head instead of moving the tail
-        if(nx == food.x && ny == food.y)
-        {
-            var tail = snake_array.pop(); //pops out the last cell
-            tail.x = nx; tail.y = ny;
-            // score++;
-            // Create new food if we've not made a snake too long
-            // otherwise restart game. Hopefully this will deal with the
-            // freezing we've been seeing after 600,000 ages and it wins
-            if(snake_array.length < ((h / cw) * (w / cw)) - 1)
-            {
-                create_food();
-            }
-            else
-            {
-                //restart game
-                init();
-                //Lets organize the code a bit now.
-                return;
-            }
-        }
-        else
-        {
-            var tail = snake_array.pop(); //pops out the last cell
-            tail.x = nx; tail.y = ny;
-        }
+
         //The snake can now eat the food.
-        
+        var tail = snake_array.pop(); //pops out the last cell
+        tail.x = nx; tail.y = ny;
         snake_array.unshift(tail); //puts back the tail as the first cell
         
         // test_array = zeros([w/cw, h/cw]);
-
-        for(var i = 0; i < snake_array.length; i++)
-        {
-            var c = snake_array[i];
-            //Lets paint 10px wide cells
-            cell_colour = 'rgb(' + ((i / (snake_array.length - 1)) * 200) + ',' + ((i / (snake_array.length - 1)) * 200) + ', 255)';
-            paint_cell(c.x, c.y, cell_colour);
-            // test_array[c.y][c.x] = 2;
-        }
-        
-        //Lets paint the food
-        paint_cell(food.x, food.y, "red");
 
 
         // After all the painting and updates, calculate the input array stuff
@@ -375,19 +315,17 @@ $(document).ready(function(){
         return array;
     }
     
-    function get_input_array(isSnake) {
-        var new_array = zeros([w/cw, h/cw]);
+    function get_input_array(board_item) {
+        var test_array = zeros([w/cw, h/cw]);
 
-        if(isSnake)
+        for(var i = 0; i < board_item.length; i++)
         {
-            var c = snake_array[0];
-            new_array[c.x][c.y] = 1;
-        } else {
-            new_array[food.x][food.y] = 1;    
+            // We reverse x and y here so that x corresponds
+            // with rows and y with columns
+            test_array[board_item[i].y][board_item[i].x] = 1;
         }
 
-        return new_array;
-        
+        return test_array;       
     }
     
     //Lets first create a generic function to paint cells
